@@ -36,9 +36,44 @@ pub fn aim(input: &Input, debug: &mut Gizmos) -> Option<Command> {
     debug.overlay("Hit rate", format!("{}/{resolved}", input.stats.hits));
 
     let observation = input.observation?;
+    let obersvation_age_s=input.now_s-observation.time_s;
+
     for plate in observation.target.plates(input.size) {
         debug.plate(plate, input.size, Color::Cyan);
     }
+
+    let mut best_plate: Option<Plate>=None;
+    let mut best_score = f64::NEG_INFINITY;
+
+    for plate in observation.target.plates(input.size){
+        let to_muzzle=[
+            physics::MUZZLE_M[0] - plate.center_m[0],
+            physics::MUZZLE_M[1] - plate.center_m[1],
+            physics::MUZZLE_M[2] - plate.center_m[2],
+            ];
+        let distance=(
+            to_muzzle[0]*to_muzzle[0]+
+            to_muzzle[1]*to_muzzle[1]+
+            to_muzzle[2]*to_muzzle[2]
+        ).sqrt();
+        let normal=plate.outward_normal;
+        let score=(
+            normal[0]*to_muzzle[0]+
+            normal[1]*to_muzzle[1]+
+            normal[2]*to_muzzle[2]
+        )/distance;
+
+        if(score>best_score ){
+            best_score=score;
+            best_plate=Some(plate);
+        }
+
+    }
+    let plate=best_plate?;
+    if best_score<=0.0{
+        return None;
+    }
+    debug.plate(plate, input.size, Color::Green);
 
     // 1. Find the observation age and account for launch latency.
     // 2. Select an armor plate before solving its trajectory.
