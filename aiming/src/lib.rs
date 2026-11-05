@@ -76,7 +76,7 @@ pub fn aim(input: &Input, debug: &mut Gizmos) -> Option<Command> {
             normal[2]*to_muzzle[2]
         )/distance;
 
-        if(score>best_score ){
+        if score>best_score {
             best_score=score;
             best_plate=Some(plate);
             best_index = index;
@@ -89,17 +89,34 @@ pub fn aim(input: &Input, debug: &mut Gizmos) -> Option<Command> {
     }
 
     let mut trajectory=Trajectory::solve(plate.center_m)?;
-
     let mut predicted_plate=plate;
-    for _ in 0..5{
+    let tolerance_s=0.000001;
+    let mut converged=false;
+
+    for _ in 0..20{
+        let old_flights_s=trajectory.flight_time_s;
+
         let prediction_time_s=
             observation_age_s
             +physics::LAUNCH_DELAY_S
-            +trajectory.flight_time_s;
+            +old_flights_s;
+
         let predicted_target=observation.target.at(prediction_time_s);
         predicted_plate=predicted_target.plates(input.size)[best_index];
         trajectory=Trajectory::solve(predicted_plate.center_m)?;
+
+        let time_difference_s=
+            (trajectory.flight_time_s-old_flights_s).abs();
+        if time_difference_s<tolerance_s{
+            converged=true;
+            break;
+        }
     }
+
+    if !converged{
+        return None;
+    }
+
     debug.plate(predicted_plate, input.size, Color::Green);
     debug.trajectory(trajectory, Color::Orange);
     Some(Command{
