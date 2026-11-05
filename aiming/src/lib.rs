@@ -36,7 +36,7 @@ pub fn aim(input: &Input, debug: &mut Gizmos) -> Option<Command> {
     debug.overlay("Hit rate", format!("{}/{resolved}", input.stats.hits));
 
     let observation = input.observation?;
-    let obersvation_age_s=input.now_s-observation.time_s;
+    let observation_age_s=input.now_s-observation.time_s;
 
     for plate in observation.target.plates(input.size) {
         debug.plate(plate, input.size, Color::Cyan);
@@ -44,8 +44,9 @@ pub fn aim(input: &Input, debug: &mut Gizmos) -> Option<Command> {
 
     let mut best_plate: Option<Plate>=None;
     let mut best_score = f64::NEG_INFINITY;
+    let mut best_index: usize = 0;
 
-    for plate in observation.target.plates(input.size){
+    for (index, plate) in observation.target.plates(input.size).into_iter().enumerate() {
         let to_muzzle=[
             physics::MUZZLE_M[0] - plate.center_m[0],
             physics::MUZZLE_M[1] - plate.center_m[1],
@@ -66,6 +67,7 @@ pub fn aim(input: &Input, debug: &mut Gizmos) -> Option<Command> {
         if(score>best_score ){
             best_score=score;
             best_plate=Some(plate);
+            best_index = index;
         }
 
     }
@@ -73,10 +75,20 @@ pub fn aim(input: &Input, debug: &mut Gizmos) -> Option<Command> {
     if best_score<=0.0{
         return None;
     }
-    debug.plate(plate, input.size, Color::Green);
 
-    let target_m=plate.center_m;
-    let trajectory=Trajectory::solve(target_m)?;
+    let mut trajectory=Trajectory::solve(plate.center_m)?;
+
+    let mut predicted_plate=plate;
+    for _ in 0..5{
+        let prediction_time_s=
+            observation_age_s
+            +physics::LAUNCH_DELAY_S
+            +trajectory.flight_time_s;
+        let predicted_target=observation.target.at(prediction_time_s);
+        predicted_plate=predicted_target.plates(input.size)[best_index];
+        trajectory=Trajectory::solve(predicted_plate.center_m)?;
+    }
+    debug.plate(predicted_plate, input.size, Color::Green);
     debug.trajectory(trajectory, Color::Orange);
     Some(Command{
         yaw_rad:trajectory.yaw_rad,
