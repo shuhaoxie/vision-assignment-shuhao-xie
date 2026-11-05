@@ -75,6 +75,15 @@ pub fn aim(input: &Input, debug: &mut Gizmos) -> Option<Command> {
     }
     debug.plate(plate, input.size, Color::Green);
 
+    let target_m=plate.center_m;
+    let trajectory=Trajectory::solve(target_m)?;
+    debug.trajectory(trajectory, Color::Orange);
+    Some(Command{
+        yaw_rad:trajectory.yaw_rad,
+        pitch_rad:trajectory.pitch_rad,
+        fire: true,
+    })
+
     // 1. Find the observation age and account for launch latency.
     // 2. Select an armor plate before solving its trajectory.
     // 3. Solve a trajectory with Trajectory::solve.
@@ -82,7 +91,6 @@ pub fn aim(input: &Input, debug: &mut Gizmos) -> Option<Command> {
     // Optional drawings for your solution:
     // debug.plate(predicted_plate, input.size, Color::Green);
     // debug.trajectory(trajectory, Color::Orange);
-    None
 }
 
 /// The only simulation data provided to the applicant's controller.
