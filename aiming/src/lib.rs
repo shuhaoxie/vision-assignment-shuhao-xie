@@ -117,6 +117,39 @@ pub fn aim(input: &Input, debug: &mut Gizmos) -> Option<Command> {
         return None;
     }
 
+    let projectile_velocity=
+        trajectory.velocity(trajectory.flight_time_s);
+    
+    let relative_velocity=[
+        projectile_velocity[0]-predicted_plate.velocity_m_s[0],
+        projectile_velocity[1]-predicted_plate.velocity_m_s[1],
+        projectile_velocity[2]-predicted_plate.velocity_m_s[2],
+    ];
+
+    let relative_speed=(
+        relative_velocity[0]*relative_velocity[0]
+        +relative_velocity[1]*relative_velocity[1]
+        +relative_velocity[2]*relative_velocity[2]
+    ).sqrt();
+
+    if relative_speed<=0.000001{
+        return None;
+    }
+
+    let normal=predicted_plate.outward_normal;
+
+    let incidence_score=-(
+        normal[0]*relative_velocity[0]
+        +normal[1]*relative_velocity[1]
+        +normal[2]*relative_velocity[2]
+    )/relative_speed;
+
+    if incidence_score<=0.0{
+        return None;
+    }
+
+
+
     debug.plate(predicted_plate, input.size, Color::Green);
     debug.trajectory(trajectory, Color::Orange);
     Some(Command{
