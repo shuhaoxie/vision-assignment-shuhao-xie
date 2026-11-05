@@ -42,11 +42,23 @@ pub fn aim(input: &Input, debug: &mut Gizmos) -> Option<Command> {
         debug.plate(plate, input.size, Color::Cyan);
     }
 
+    let dx=observation.target.x_m - physics::MUZZLE_M[0];
+    let dy=observation.target.y_m - physics::MUZZLE_M[1];
+    let dz=input.size.plate_center_z_m - physics::MUZZLE_M[2];
+
+    let center_distance_m=(dx*dx+dy*dy+dz*dz).sqrt();
+
+    let rough_flight_s=center_distance_m / physics::MUZZLE_SPEED_M_S;
+    let selection_time_s=
+        observation_age_s+physics::LAUNCH_DELAY_S + rough_flight_s;
+    let selection_target=observation.target.at(selection_time_s);
+
     let mut best_plate: Option<Plate>=None;
     let mut best_score = f64::NEG_INFINITY;
     let mut best_index: usize = 0;
 
-    for (index, plate) in observation.target.plates(input.size).into_iter().enumerate() {
+    for (index, plate) in 
+    selection_target.plates(input.size).into_iter().enumerate() {
         let to_muzzle=[
             physics::MUZZLE_M[0] - plate.center_m[0],
             physics::MUZZLE_M[1] - plate.center_m[1],
